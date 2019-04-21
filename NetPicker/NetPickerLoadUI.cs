@@ -4,6 +4,7 @@ using ICities;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using ColossalFramework.PlatformServices;
 
 using CimTools.Utilities;
 
@@ -24,6 +25,8 @@ namespace NetPicker
 
     public class NetPickerLoader : LoadingExtensionBase
     {
+        public PublishedFileId toolID = new PublishedFileId(1612012531ul);
+
         public string m_atlasName = "ElektrixNetPicker";
         public bool m_atlasLoaded;
         ElektrixModsConfiguration config = Configuration<ElektrixModsConfiguration>.Load();
@@ -44,6 +47,14 @@ namespace NetPicker
             else NetPickerTool.instance.ThrowError("The texture atlas (provides custom icons) has not loaded. All icons have reverted to text prompts.");
         }
 
+        private Vector3 m_deltaPos;
+
+        public override void OnLevelUnloading()
+        {
+            base.OnLevelUnloading();
+            UIView.Find("ElektrixMB").parent.RemoveUIComponent(UIView.Find("ElektrixMB"));
+        }
+
         public override void OnLevelLoaded(LoadMode mode)
         {
             if (NetPickerTool.instance == null)
@@ -53,16 +64,23 @@ namespace NetPicker
                 NetPickerTool.instance.enabled = false;
             }
 
+            if (!config.HasSeenHowToDragTheStupidIcon)
+            {
+                NetPickerTool.instance.ThrowError("Double-click the Elektrix's Mods icon to move it.");
+                config.HasSeenHowToDragTheStupidIcon = true;
+                Configuration<ElektrixModsConfiguration>.Save();
+            }
+
             // Load Sprites
             LoadSprites();
 
             // Initiate UI
             // 1.1 - modular?
             UIPanel modsPanel = (UIPanel)UIView.Find("ElektrixModsPanel");
-            int toggleClicks = 0;
 
             if (modsPanel == null)
             {
+                
                 UIComponent TSBar = UIView.Find("TSBar");
                 UIPanel elektrixModsBackground = TSBar.AddUIComponent<UIPanel>();
                 elektrixModsBackground.name = "ElektrixMB";
@@ -100,6 +118,37 @@ namespace NetPicker
                     doneButton.Show();
                     handle.enabled = true;
                 };
+                /*
+                elektrixModsBackground.eventMouseMove += (component, ms) =>
+                {
+                    if (ms.buttons.IsFlagSet(UIMouseButton.Right))
+                    {
+                        Vector3 mousePos = Input.mousePosition;
+                        mousePos.y = UIView.GetAView().fixedHeight - mousePos.y;
+                        elektrixModsBackground.absolutePosition = mousePos + m_deltaPos;
+
+                        Debug.Log(mousePos + ", " + Input.mousePosition);
+                        config.PanelX = (int)elektrixModsBackground.absolutePosition.x;
+                        config.PanelY = (int)elektrixModsBackground.absolutePosition.y;
+                        Configuration<ElektrixModsConfiguration>.Save();
+                    }
+                };*/
+                /*
+                elektrixModsBackground.eventMouseDown += (component, ms) =>
+                {
+                    if (ms.buttons.IsFlagSet(UIMouseButton.Right))
+                    {
+                        Vector3 mousePos = Input.mousePosition;
+                        mousePos.y = UIView.GetAView().fixedHeight - mousePos.y;
+                        m_deltaPos = elektrixModsBackground.absolutePosition - mousePos;
+                        elektrixModsBackground.absolutePosition = mousePos + m_deltaPos;
+
+
+                        config.PanelX = (int)elektrixModsBackground.absolutePosition.x;
+                        config.PanelY = (int)elektrixModsBackground.absolutePosition.y;
+                        Configuration<ElektrixModsConfiguration>.Save();
+                    }
+                };*/
 
                 doneButton.eventClick += (component, ms) =>
                 {
@@ -149,8 +198,7 @@ namespace NetPicker
                 elektrixModsToggle.textHorizontalAlignment = UIHorizontalAlignment.Center;
 
                 modsPanel = elektrixModsBackground.AddUIComponent<UIPanel>();
-                modsPanel.backgroundSprite = "GenericPanelLight";
-                modsPanel.color = new Color32(96, 96, 96, 255);
+                modsPanel.backgroundSprite = "MenuPanel2";
                 modsPanel.name = "ElektrixModsPanel";
                 modsPanel.width = 0;
                 modsPanel.relativePosition = new Vector3(0, -modsPanel.height - 7);
@@ -158,12 +206,12 @@ namespace NetPicker
 
                 UILabel panelLabel = modsPanel.AddUIComponent<UILabel>();
                 panelLabel.text = "Elektrix's Mods";
-                panelLabel.relativePosition = new Vector3(12f, 12f);
+                panelLabel.name = "EL";
+                panelLabel.relativePosition = new Vector3(12f, 15f);
 
                 elektrixModsToggle.eventClicked += (component, click) =>
                 {
-                    toggleClicks++;
-                    if (toggleClicks == 1)
+                    if (!modsPanel.isVisible)
                     {
                         elektrixModsToggle.Focus();
                         modsPanel.Show();
@@ -171,7 +219,6 @@ namespace NetPicker
                     else
                     {
                         elektrixModsToggle.Unfocus();
-                        toggleClicks = 0;
                         modsPanel.Hide();
                     }
                 };
@@ -180,18 +227,26 @@ namespace NetPicker
             modsPanel = (UIPanel) UIView.Find("ElektrixModsPanel");
 
             UIPanel backgroundPanel = modsPanel.AddUIComponent<UIPanel>();
-            backgroundPanel.backgroundSprite = "GenericPanelLight";
+            backgroundPanel.backgroundSprite = "GenericPanelWhite";
             backgroundPanel.name = "E2";
-            backgroundPanel.height = 50f;
+            backgroundPanel.height = 70f;
             backgroundPanel.width = 135f;
-            backgroundPanel.relativePosition = new Vector3(10f, 40f + 70f);
+            backgroundPanel.relativePosition = new Vector3(10f, 0f);
+            backgroundPanel.color = new Color32(91, 97, 106, 255);
+
+            UILabel title = backgroundPanel.AddUIComponent<UILabel>();
+            title.text = "Net Picker";
+            title.name = "E2L";
+            title.textScale = 0.9f;
+            title.relativePosition = new Vector3(7f, 7f);
 
             UIButton netPickerTool = backgroundPanel.AddUIComponent<UIButton>();
             int netClicks = 0;
             ElektrixUI.SetupButtonStateSprites(ref netPickerTool, "OptionBase", true);
             netPickerTool.size = new Vector2(45f, 45f);
-            netPickerTool.relativePosition = new Vector3(5f, 2.5f);
+            netPickerTool.relativePosition = new Vector3(5f, 22f);
             netPickerTool.name = "E2A";
+            netPickerTool.tooltip = "Click a road to select it in the roads panel.";
             if (m_atlasLoaded)
             {
                 UISprite internalSprite = netPickerTool.AddUIComponent<UISprite>();
@@ -206,19 +261,39 @@ namespace NetPicker
             }
             netPickerTool.textScale = 1.3f;
 
+            UIButton openDescription = backgroundPanel.AddUIComponent<UIButton>();
+            openDescription.relativePosition = new Vector3(backgroundPanel.width - 20, 5);
+            openDescription.size = new Vector3(15, 15);
+            openDescription.normalFgSprite = "ToolbarIconHelp";
+            openDescription.name = "E2H";
+            openDescription.tooltip = "Open in Steam Workshop";
+            ElektrixUI.SetupButtonStateSprites(ref openDescription, "OptionBase", true);
+            if (!PlatformService.IsOverlayEnabled())
+            {
+                openDescription.isVisible = false;
+                openDescription.isEnabled = false;
+            }
+            openDescription.eventClicked += (component, click) => {
+                if (PlatformService.IsOverlayEnabled() && toolID != PublishedFileId.invalid)
+                {
+                    PlatformService.ActivateGameOverlayToWorkshopItem(toolID);
+                }
+                openDescription.Unfocus();
+            };
+
             // Final overrides
             //UIPanel modsPanel = (UIPanel) UIView.Find("ElektrixModsPanel");
             IList<UIComponent> panels = modsPanel.components;
             float longestPanelWidth = 0;
             for (int i = 0; i < panels.Count; i++){
                 if (!(panels[i] is UIPanel)) continue;
-                panels[i].relativePosition = new Vector3(panels[i].relativePosition.x, 35 + (60 * (i - 1)));
+                panels[i].relativePosition = new Vector3(panels[i].relativePosition.x, 50 + (80 * (i - 1)));
                 if(panels[i].width > longestPanelWidth) {
                     longestPanelWidth = panels[i].width;
                 }
             }
 
-            modsPanel.height = 40f + (modsPanel.childCount - 1) * 60f;
+            modsPanel.height = 50f + (modsPanel.childCount - 1) * 80f;
             modsPanel.width = 20f + longestPanelWidth;
             modsPanel.relativePosition = new Vector3(0, -modsPanel.height - 7);
 
